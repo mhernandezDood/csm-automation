@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CSM Automation — Projets Team</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #ffffff; --bg2: #f5f5f3; --bg3: #ededea;
+      --text: #1a1a18; --text2: #5f5e5a; --text3: #888780;
+      --border: rgba(0,0,0,0.12); --border2: rgba(0,0,0,0.2);
+      --blue-bg: #e6f1fb; --blue-text: #185fa5;
+      --green-bg: #eaf3de; --green-text: #3b6d11;
+      --amber-bg: #faeeda; --amber-text: #854f0b;
+      --red-bg: #fcebeb; --red-text: #a32d2d;
+      --radius: 8px; --radius-lg: 12px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1e1e1c; --bg2: #2a2a28; --bg3: #333330;
+        --text: #f0efe8; --text2: #b4b2a9; --text3: #888780;
+        --border: rgba(255,255,255,0.1); --border2: rgba(255,255,255,0.2);
+        --blue-bg: #0c447c; --blue-text: #b5d4f4;
+        --green-bg: #27500a; --green-text: #c0dd97;
+        --amber-bg: #633806; --amber-text: #FAC775;
+        --red-bg: #791f1f; --red-text: #f7c1c1;
+      }
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg3); color: var(--text); min-height: 100vh; padding: 1.5rem; }
+    .container { max-width: 780px; margin: 0 auto; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; background: var(--bg); border-radius: var(--radius-lg); padding: 14px 20px; border: 0.5px solid var(--border); }
+    .topbar h1 { font-size: 17px; font-weight: 500; }
+    .topbar h1 i { font-size: 15px; margin-right: 6px; vertical-align: -2px; }
+    .auth-status { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2); }
+    .auth-dot { width: 8px; height: 8px; border-radius: 50%; background: #E24B4A; }
+    .auth-dot.on { background: #639922; }
+    .step-bar { display: flex; gap: 6px; margin-bottom: 1.25rem; flex-wrap: wrap; }
+    .step { font-size: 11px; padding: 4px 14px; border-radius: 20px; border: 0.5px solid var(--border); color: var(--text2); background: var(--bg); }
+    .step.active { background: var(--blue-bg); color: var(--blue-text); border-color: transparent; font-weight: 500; }
+    .step.done { background: var(--green-bg); color: var(--green-text); border-color: transparent; }
+    .card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1rem 1.25rem; margin-bottom: 12px; }
+    .card-title { font-size: 11px; font-weight: 500; color: var(--text2); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 12px; }
+    .card-title i { font-size: 13px; margin-right: 5px; vertical-align: -1px; }
+    .mail-item { padding: 10px 12px; border: 0.5px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+    .mail-item:hover { border-color: var(--border2); background: var(--bg2); }
+    .mail-item.selected { border-color: var(--blue-text); background: var(--blue-bg); }
+    .mail-item.selected * { color: var(--blue-text) !important; }
+    .mail-subject { font-size: 13px; font-weight: 500; margin-bottom: 3px; }
+    .mail-meta { font-size: 11px; color: var(--text2); }
+    .mail-snippet { font-size: 11px; color: var(--text3); margin-top: 3px; font-style: italic; }
+    .field-grid { display: grid; grid-template-columns: 155px 1fr 68px 88px; gap: 8px; align-items: center; padding: 7px 0; border-bottom: 0.5px solid var(--border); }
+    .field-grid:last-child { border-bottom: none; }
+    .flabel { font-size: 12px; color: var(--text2); }
+    .fval { font-size: 12px; font-weight: 500; }
+    .fval input { font-size: 12px; width: 100%; border: 0.5px solid var(--border2); border-radius: 6px; padding: 4px 8px; background: var(--bg2); color: var(--text); outline: none; }
+    .fval input:focus { border-color: var(--blue-text); }
+    .conf { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text2); }
+    .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .dg { background: #639922; } .dm { background: #BA7517; } .dr { background: #E24B4A; } .dn { background: var(--border2); }
+    .src-tag { font-size: 10px; padding: 2px 8px; border-radius: 20px; border: 0.5px solid var(--border); color: var(--text2); white-space: nowrap; }
+    .deduction { font-size: 10px; color: var(--text3); font-style: italic; padding: 1px 0 5px 155px; border-bottom: 0.5px solid var(--border); margin-top: -6px; }
+    .summary-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 1rem; }
+    .metric { background: var(--bg2); border-radius: var(--radius); padding: 10px 14px; }
+    .metric-l { font-size: 10px; color: var(--text2); margin-bottom: 4px; }
+    .metric-v { font-size: 20px; font-weight: 500; }
+    .tabs { display: flex; gap: 5px; margin-bottom: 10px; flex-wrap: wrap; }
+    .tab { font-size: 12px; padding: 5px 14px; border-radius: var(--radius); border: 0.5px solid var(--border); cursor: pointer; background: transparent; color: var(--text2); transition: all 0.15s; }
+    .tab:hover { background: var(--bg2); }
+    .tab.active { background: var(--bg); color: var(--text); border-color: var(--border2); font-weight: 500; }
+    .actions { display: flex; gap: 8px; margin-top: 1rem; flex-wrap: wrap; }
+    .btn { padding: 8px 18px; border-radius: var(--radius); font-size: 12px; font-weight: 500; cursor: pointer; border: none; transition: opacity 0.15s; }
+    .btn:hover { opacity: 0.85; }
+    .btn-primary { background: var(--green-bg); color: var(--green-text); }
+    .btn-secondary { background: transparent; border: 0.5px solid var(--border2); color: var(--text2); }
+    .btn-info { background: var(--blue-bg); color: var(--blue-text); }
+    .btn-oauth { background: #4285F4; color: white; border-radius: var(--radius); padding: 10px 22px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 10px; }
+    .alert { border-radius: var(--radius); padding: 9px 13px; font-size: 12px; margin-bottom: 10px; display: flex; align-items: flex-start; gap: 8px; }
+    .alert i { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+    .alert-warn { background: var(--amber-bg); color: var(--amber-text); }
+    .alert-success { background: var(--green-bg); color: var(--green-text); }
+    .alert-info { background: var(--blue-bg); color: var(--blue-text); }
+    .loading { text-align: center; padding: 2.5rem 1rem; color: var(--text2); font-size: 13px; }
+    .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--border2); border-top-color: #4285F4; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 8px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .position-box { background: var(--bg2); border-radius: var(--radius); padding: 10px 14px; font-size: 12px; }
+    .pos-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
+    .pos-new { background: var(--blue-bg); color: var(--blue-text); border-radius: 6px; padding: 4px 10px; font-weight: 500; }
+    .pos-label { color: var(--text3); min-width: 90px; }
+    .pos-date { margin-left: auto; color: var(--text3); font-size: 11px; }
+    code { background: var(--bg2); border: 0.5px solid var(--border); border-radius: 4px; padding: 1px 6px; font-size: 11px; font-family: monospace; }
+    a.btn { text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    @media (max-width: 600px) {
+      body { padding: 0.75rem; }
+      .field-grid { grid-template-columns: 120px 1fr 55px 75px; }
+      .summary-row { grid-template-columns: repeat(2,1fr); }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <div class="topbar">
+    <h1><i class="ti ti-table-options"></i>CSM Automation</h1>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div class="auth-status"><div class="auth-dot" id="auth-dot"></div><span id="auth-label">Non connecté</span></div>
+      <span style="font-size:11px;color:var(--text3);" id="today-date"></span>
+    </div>
+  </div>
+
+  <div class="step-bar">
+    <span class="step active" id="step1">1 · Connexion</span>
+    <span class="step" id="step2">2 · Mail</span>
+    <span class="step" id="step3">3 · Analyse</span>
+    <span class="step" id="step4">4 · Validation</span>
+    <span class="step" id="step5">5 · Écriture</span>
+  </div>
+
+  <!-- STEP 1 -->
+  <div id="panel-step1">
+    <div class="card">
+      <p class="card-title"><i class="ti ti-brand-google"></i>Connexion Google</p>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:1.25rem;">Autorise l'accès à Gmail (lecture mails) et Google Sheets (écriture lignes projet).</p>
+      <button class="btn-oauth" onclick="startOAuth()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+        Se connecter avec Google
+      </button>
+      <div id="oauth-error" style="display:none;margin-top:12px;"></div>
+      <div id="token-input-zone" style="display:none;margin-top:1.25rem;">
+        <p style="font-size:12px;color:var(--text2);margin-bottom:8px;">
+          Après l'autorisation Google, tu es redirigé vers une page.<br>
+          Copie la valeur du paramètre <code>code=...</code> dans l'URL et colle-la ici :
+        </p>
+        <input type="text" id="oauth-code" placeholder="4/0AX4XfWh..." style="width:100%;font-size:12px;padding:7px 10px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--bg2);color:var(--text);margin-bottom:10px;outline:none;" />
+        <button class="btn btn-info" onclick="exchangeCode()">Valider le code</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div id="panel-step2" style="display:none;">
+    <div class="card">
+      <p class="card-title"><i class="ti ti-mail"></i>Mails — Nouveau contrat / Passation</p>
+      <div id="mail-list"><div class="loading"><span class="spinner"></span>Chargement des mails...</div></div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-info" id="btn-analyze" onclick="startAnalysis()" style="display:none;"><i class="ti ti-sparkles" style="margin-right:5px;"></i>Analyser avec l'IA</button>
+      <button class="btn btn-secondary" onclick="loadMails()"><i class="ti ti-refresh" style="margin-right:5px;"></i>Actualiser</button>
+    </div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div id="panel-step3" style="display:none;">
+    <div class="card">
+      <div class="loading"><span class="spinner"></span><span id="analysis-status">Lecture du mail...</span></div>
+    </div>
+  </div>
+
+  <!-- STEP 4 -->
+  <div id="panel-step4" style="display:none;">
+    <div class="summary-row">
+      <div class="metric"><div class="metric-l">Extraits mail/PJ</div><div class="metric-v" style="color:#639922;" id="m-extracted">—</div></div>
+      <div class="metric"><div class="metric-l">Déduits sheet</div><div class="metric-v" style="color:#BA7517;" id="m-deduced">—</div></div>
+      <div class="metric"><div class="metric-l">À compléter</div><div class="metric-v" style="color:#E24B4A;" id="m-missing">—</div></div>
+      <div class="metric"><div class="metric-l">Confiance</div><div class="metric-v" id="m-confidence">—</div></div>
+    </div>
+    <div id="alerts-zone"></div>
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('identification')">Identification</button>
+      <button class="tab" onclick="showTab('dates')">Dates & statut</button>
+      <button class="tab" onclick="showTab('ecosysteme')">Écosystème</button>
+      <button class="tab" onclick="showTab('facturation')">Facturation</button>
+    </div>
+    <div id="tab-identification"><div class="card"><p class="card-title">Identification</p><div id="fields-identification"></div></div></div>
+    <div id="tab-dates" style="display:none;"><div class="card"><p class="card-title">Dates & statut</p><div id="fields-dates"></div></div></div>
+    <div id="tab-ecosysteme" style="display:none;"><div class="card"><p class="card-title">Écosystème</p><div id="fields-ecosysteme"></div></div></div>
+    <div id="tab-facturation" style="display:none;"><div class="card"><p class="card-title">Facturation</p><div id="fields-facturation"></div></div></div>
+    <div class="card" style="margin-top:4px;">
+      <p class="card-title"><i class="ti ti-list-numbers"></i>Position d'insertion calculée</p>
+      <div id="position-preview"><div class="loading" style="padding:1rem;"><span class="spinner"></span>Calcul...</div></div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" onclick="writeToSheets()"><i class="ti ti-check" style="margin-right:5px;"></i>Valider et insérer dans Google Sheets</button>
+      <button class="btn btn-secondary" onclick="backToMails()"><i class="ti ti-arrow-left" style="margin-right:5px;"></i>Retour</button>
+    </div>
+  </div>
+
+  <!-- STEP 5 -->
+  <div id="panel-step5" style="display:none;">
+    <div class="card"><div id="write-content"></div></div>
+  </div>
+
+</div>
+<script>
+const CLIENT_ID = '1001026932986-56vh7ahmeo4p66f66f1fhacbk000gro9.apps.googleusercontent.com';
+const CLIENT_SECRET = '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';
+const SHEET_ID = '1ZlqG1jRTx-2yHFwHAEOgTej13TS720ARb4bw6aXemTA';
+const REDIRECT_URI = window.location.href.split('?')[0];
+const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/gmail.readonly';
+const DATA_START_ROW = 3;
+
+let accessToken = null, selectedMail = null, analysisResult = null, allMails = [], insertRowIndex = null;
+
+document.getElementById('today-date').textContent = new Date().toLocaleDateString('fr-FR', {weekday:'short',day:'numeric',month:'long',year:'numeric'});
+
+// Auto-catch code from URL on redirect
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('code')) {
+  document.getElementById('token-input-zone').style.display = 'block';
+  document.getElementById('oauth-code').value = urlParams.get('code');
+  window.history.replaceState({}, '', window.location.pathname);
+}
+
+function parseDate(str) {
+  if (!str) return null;
+  const m = str.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (!m) return null;
+  return new Date(parseInt(m[3]), parseInt(m[2])-1, parseInt(m[1]));
+}
+
+function startOAuth() {
+  const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=${encodeURIComponent(SCOPES)}&access_type=offline&prompt=consent`;
+  window.location.href = url;
+}
+
+async function exchangeCode() {
+  const code = document.getElementById('oauth-code').value.trim();
+  if (!code) return;
+  const errEl = document.getElementById('oauth-error');
+  errEl.innerHTML = '<div class="loading"><span class="spinner"></span>Échange du code...</div>';
+  errEl.style.display = 'block';
+  try {
+    const resp = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ code, client_id: CLIENT_ID, client_secret: CLIENT_SECRET, redirect_uri: REDIRECT_URI, grant_type: 'authorization_code' })
+    });
+    const data = await resp.json();
+    if (data.access_token) {
+      accessToken = data.access_token;
+      if (data.refresh_token) localStorage.setItem('csm_refresh', data.refresh_token);
+      setConnected();
+    } else {
+      errEl.innerHTML = `<div class="alert alert-warn"><i class="ti ti-alert-triangle"></i>Erreur : ${data.error_description || JSON.stringify(data)}</div>`;
+    }
+  } catch(e) { errEl.innerHTML = `<div class="alert alert-warn"><i class="ti ti-alert-triangle"></i>Erreur réseau : ${e.message}</div>`; }
+}
+
+async function tryRefreshToken() {
+  const rt = localStorage.getItem('csm_refresh');
+  if (!rt) return false;
+  try {
+    const resp = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ refresh_token: rt, client_id: CLIENT_ID, client_secret: CLIENT_SECRET, grant_type: 'refresh_token' })
+    });
+    const data = await resp.json();
+    if (data.access_token) { accessToken = data.access_token; return true; }
+  } catch(e) {}
+  return false;
+}
+
+function setConnected() {
+  document.getElementById('auth-dot').classList.add('on');
+  document.getElementById('auth-label').textContent = 'Connecté';
+  document.getElementById('panel-step1').style.display = 'none';
+  document.getElementById('panel-step2').style.display = 'block';
+  setStep(2);
+  loadMails();
+}
+
+async function gmailFetch(path, params='') {
+  const r = await fetch(`https://gmail.googleapis.com/gmail/v1/${path}${params}`, { headers: { Authorization: 'Bearer ' + accessToken } });
+  if (r.status === 401) { const ok = await tryRefreshToken(); if (ok) return gmailFetch(path, params); }
+  return r.json();
+}
+
+async function sheetsFetch(path, method='GET', body=null) {
+  const opts = { method, headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}${path}`, opts);
+  if (r.status === 401) { const ok = await tryRefreshToken(); if (ok) return sheetsFetch(path, method, body); }
+  return r.json();
+}
+
+async function loadMails() {
+  document.getElementById('mail-list').innerHTML = '<div class="loading"><span class="spinner"></span>Recherche des mails...</div>';
+  document.getElementById('btn-analyze').style.display = 'none';
+  selectedMail = null;
+  try {
+    const search = await gmailFetch('users/me/messages', '?q=subject:(nouveau+contrat+OR+passation)&maxResults=10');
+    if (!search.messages?.length) { document.getElementById('mail-list').innerHTML = '<div class="loading">Aucun mail "Nouveau contrat" ou "Passation" trouvé.</div>'; return; }
+    const details = await Promise.all(search.messages.slice(0,8).map(m => gmailFetch(`users/me/messages/${m.id}`, '?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date')));
+    allMails = details.map(d => {
+      const h = d.payload?.headers || [];
+      const get = n => h.find(x => x.name===n)?.value || '';
+      return { id: d.id, subject: get('Subject'), from: get('From'), date: get('Date'), snippet: d.snippet };
+    });
+    document.getElementById('mail-list').innerHTML = allMails.map((m,i) => `
+      <div class="mail-item" id="mail-${i}" onclick="selectMail(${i})">
+        <div class="mail-subject"><i class="ti ti-mail" style="font-size:12px;margin-right:5px;vertical-align:-1px;"></i>${m.subject||'(sans objet)'}</div>
+        <div class="mail-meta">${m.from} · ${m.date ? new Date(m.date).toLocaleDateString('fr-FR') : ''}</div>
+        ${m.snippet?`<div class="mail-snippet">${m.snippet.slice(0,100)}...</div>`:''}
+      </div>`).join('');
+  } catch(e) { document.getElementById('mail-list').innerHTML = `<div class="alert alert-warn"><i class="ti ti-alert-triangle"></i>Erreur Gmail : ${e.message}</div>`; }
+}
+
+function selectMail(i) {
+  document.querySelectorAll('.mail-item').forEach(el => el.classList.remove('selected'));
+  document.getElementById('mail-'+i)?.classList.add('selected');
+  selectedMail = allMails[i];
+  document.getElementById('btn-analyze').style.display = 'inline-block';
+}
+
+async function getMailBody(id) {
+  const msg = await gmailFetch(`users/me/messages/${id}`, '?format=full');
+  let text = '';
+  const extract = parts => { for (const p of parts||[]) { if (p.mimeType==='text/plain'&&p.body?.data) { try { text += atob(p.body.data.replace(/-/g,'+').replace(/_/g,'/')); } catch(e){} } else if (p.parts) extract(p.parts); } };
+  if (msg.payload?.body?.data) { try { text = atob(msg.payload.body.data.replace(/-/g,'+').replace(/_/g,'/')); } catch(e){} }
+  else extract(msg.payload?.parts);
+  return text.slice(0, 4000);
+}
+
+async function getSheetDates() {
+  const data = await sheetsFetch('/values/A1:K400');
+  return (data.values||[]).map((r,i) => ({ rowIndex: i+1, contrat: r[4]||'', dateLiv: r[10]||'' })).filter(r => r.contrat||r.dateLiv);
+}
+
+async function getSheetContext() {
+  const data = await sheetsFetch('/values/A1:R20');
+  return (data.values||[]).slice(0,15).map(r => r.slice(0,18).join(' | ')).join('\n');
+}
+
+function findInsertPosition(sheetRows, targetDateStr) {
+  const targetDate = parseDate(targetDateStr);
+  if (!targetDate) return { rowIndex: sheetRows.length+1, before: null, after: null };
+  const dataRows = sheetRows.filter(r => r.rowIndex >= DATA_START_ROW && r.dateLiv);
+  for (let i = 0; i < dataRows.length; i++) {
+    const d = parseDate(dataRows[i].dateLiv);
+    if (d && targetDate > d) {
+      const prev = i > 0 ? dataRows[i-1] : null;
+      return { rowIndex: dataRows[i].rowIndex, before: prev?{contrat:prev.contrat,date:prev.dateLiv}:null, after:{contrat:dataRows[i].contrat,date:dataRows[i].dateLiv} };
+    }
+  }
+  const last = dataRows[dataRows.length-1];
+  return { rowIndex: last?last.rowIndex+1:DATA_START_ROW, before: last?{contrat:last.contrat,date:last.dateLiv}:null, after:null };
+}
+
+async function startAnalysis() {
+  if (!selectedMail) return;
+  document.getElementById('panel-step2').style.display = 'none';
+  document.getElementById('panel-step3').style.display = 'block';
+  setStep(3);
+  const statuses = ['Lecture du mail...','Analyse IA...','Comparaison avec le sheet...','Calcul de la position...','Préparation de la validation...'];
+  let si = 0;
+  const iv = setInterval(() => { si=(si+1)%statuses.length; const el=document.getElementById('analysis-status'); if(el) el.textContent=statuses[si]; }, 2000);
+  try {
+    const [body, sheetCtx] = await Promise.all([getMailBody(selectedMail.id), getSheetContext()]);
+    const prompt = `Tu analyses des mails "Nouveau contrat" pour le fichier Projets Team CSM (déploiement de parcours digitaux chez des restaurateurs).
+
+CONTEXTE SHEET (lignes existantes):
+${sheetCtx}
+
+RÈGLES MÉTIER:
+- Si le nom du client existe déjà dans le sheet → TYPE = Roll-out, récupère POS/PSP/Fid des lignes existantes
+- "Upsell Booster" dans le mail → TYPE = Upsell
+- Premier déploiement complet → TYPE = Lancement, partiel → Pilote
+- STATUT toujours "0. A venir"
+- ChargeBee ID toujours vide
+- DATE LIVRAISON EFFECTIVE toujours vide
+- Aucune date de livraison → passation + 15 jours
+- PSP = Yavin → Fees obligatoires
+- 10+ shops déployés pour l'enseigne = Grand compte, sinon SMB
+- MRR total = MRR unitaire × nbr shops
+- Sales = personne dans la signature du mail
+
+MAIL:
+Sujet: ${selectedMail.subject}
+De: ${selectedMail.from}
+Date: ${selectedMail.date}
+Corps: ${body}
+
+Réponds UNIQUEMENT en JSON sans markdown:
+{"fields":{"cdp":{"value":"","confidence":0,"source":"mail","reason":""},"sale":{"value":"","confidence":0,"source":"mail","reason":""},"type_contrat":{"value":"","confidence":0,"source":"mail","reason":""},"nom_contrat":{"value":"","confidence":0,"source":"mail","reason":""},"nbr_shop":{"value":"","confidence":0,"source":"mail","reason":""},"new_shop_physique":{"value":"","confidence":0,"source":"mail","reason":""},"statut":{"value":"0. A venir","confidence":100,"source":"regle_metier","reason":""},"date_passation":{"value":"","confidence":0,"source":"mail","reason":""},"date_livraison_prevue":{"value":"","confidence":0,"source":"mail","reason":""},"parcours":{"value":"","confidence":0,"source":"mail","reason":""},"pos":{"value":"","confidence":0,"source":"mail","reason":""},"psp":{"value":"","confidence":0,"source":"mail","reason":""},"fidelite":{"value":"","confidence":0,"source":"mail","reason":""},"fees_ht_cb":{"value":"","confidence":0,"source":"mail","reason":""},"fees_ht_trd":{"value":"","confidence":0,"source":"mail","reason":""},"abo_cc":{"value":"","confidence":0,"source":"mail","reason":""},"abo_livraison":{"value":"","confidence":0,"source":"mail","reason":""},"abo_table":{"value":"","confidence":0,"source":"mail","reason":""},"abo_bornes":{"value":"","confidence":0,"source":"mail","reason":""},"abo_global":{"value":"","confidence":0,"source":"mail","reason":""},"total_mrr_unitaire":{"value":"","confidence":0,"source":"mail","reason":""},"mrr_total":{"value":"","confidence":0,"source":"mail","reason":""},"setup_montant":{"value":"","confidence":0,"source":"mail","reason":""},"hardware_montant":{"value":"0","confidence":90,"source":"mail","reason":""},"type_client":{"value":"","confidence":0,"source":"mail","reason":""}},"alerts":[],"position_note":""}`;
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
+    });
+    const aiData = await resp.json();
+    const text = (aiData.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+    const s = text.indexOf('{'), e = text.lastIndexOf('}');
+    analysisResult = JSON.parse(text.slice(s, e+1));
+    const sheetRows = await getSheetDates();
+    const pos = findInsertPosition(sheetRows, analysisResult.fields.date_livraison_prevue?.value||'');
+    insertRowIndex = pos.rowIndex;
+    analysisResult._insertPos = pos;
+    clearInterval(iv);
+    renderValidation(analysisResult);
+  } catch(err) {
+    clearInterval(iv);
+    document.getElementById('panel-step3').style.display = 'none';
+    document.getElementById('panel-step2').style.display = 'block';
+    setStep(2);
+    alert('Erreur analyse : ' + err.message);
+  }
+}
+
+function confDot(c) { if(c==null) return '<div class="dot dn"></div>'; if(c>=85) return '<div class="dot dg"></div>'; if(c>=55) return '<div class="dot dm"></div>'; return '<div class="dot dr"></div>'; }
+function srcTag(s) { const l={mail:'📧 mail',pj:'📄 PJ',deduction:'🔍 déduction',regle_metier:'⚙️ règle',manquant:'❓ manquant'}; return `<span class="src-tag">${l[s]||s}</span>`; }
+function fieldRow(key, label, f, readOnly=false) {
+  if (!f) return '';
+  const val = readOnly ? `<span class="fval" style="color:var(--text3);">${f.value||'—'}</span>` : `<div class="fval"><input type="text" id="field-${key}" value="${(f.value||'').replace(/"/g,'&quot;')}" /></div>`;
+  return `<div class="field-grid"><span class="flabel">${label}</span>${val}<div class="conf">${confDot(f.confidence)}<span>${f.confidence!=null?f.confidence+'%':'n/a'}</span></div>${srcTag(f.source)}</div>${f.reason?`<div class="deduction">→ ${f.reason}</div>`:''}`;
+}
+
+function renderPositionPreview(pos, targetDate) {
+  const el = document.getElementById('position-preview');
+  if (!pos) { el.innerHTML = '<div class="position-box">Position non calculée.</div>'; return; }
+  let html = `<div class="position-box"><div style="margin-bottom:8px;font-size:12px;color:var(--text2);">Insertion à la ligne <strong style="color:var(--text);">${pos.rowIndex}</strong> pour la date <strong style="color:var(--text);">${targetDate}</strong></div>`;
+  if (pos.before) html += `<div class="pos-row"><span class="pos-label">↑ Au-dessus</span><span>${pos.before.contrat}</span><span class="pos-date">${pos.before.date}</span></div>`;
+  html += `<div class="pos-row"><span class="pos-new">→ Nouvelle ligne</span><span class="pos-date" style="color:var(--blue-text);">${targetDate}</span></div>`;
+  if (pos.after) html += `<div class="pos-row"><span class="pos-label">↓ En-dessous</span><span>${pos.after.contrat}</span><span class="pos-date">${pos.after.date}</span></div>`;
+  else html += `<div class="pos-row"><span class="pos-label">↓ Fin du tableau</span></div>`;
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function renderValidation(r) {
+  const f = r.fields;
+  document.getElementById('panel-step3').style.display = 'none';
+  document.getElementById('panel-step4').style.display = 'block';
+  setStep(4);
+  const vals = Object.values(f).filter(Boolean);
+  const extracted = vals.filter(v=>v.source==='mail'||v.source==='pj').length;
+  const deduced = vals.filter(v=>v.source==='deduction'||v.source==='regle_metier').length;
+  const missing = vals.filter(v=>v.source==='manquant').length;
+  const avgConf = Math.round(vals.filter(v=>v.confidence!=null).reduce((a,b)=>a+(b.confidence||0),0)/vals.filter(v=>v.confidence!=null).length);
+  document.getElementById('m-extracted').textContent = extracted;
+  document.getElementById('m-deduced').textContent = deduced;
+  document.getElementById('m-missing').textContent = missing;
+  document.getElementById('m-confidence').textContent = avgConf + '%';
+  const az = document.getElementById('alerts-zone');
+  az.innerHTML = '';
+  (r.alerts||[]).forEach(a => { az.innerHTML += `<div class="alert alert-warn"><i class="ti ti-alert-triangle"></i>${a}</div>`; });
+  if (!missing) az.innerHTML += `<div class="alert alert-success"><i class="ti ti-circle-check"></i>Tous les champs ont pu être renseignés.</div>`;
+  document.getElementById('fields-identification').innerHTML = fieldRow('cdp','Chef de projet',f.cdp)+fieldRow('sale','Sales',f.sale)+fieldRow('type_contrat','Type contrat',f.type_contrat)+fieldRow('nom_contrat','Nom contrat',f.nom_contrat)+fieldRow('nbr_shop','Nombre de shops',f.nbr_shop)+fieldRow('new_shop_physique','New shop physique',f.new_shop_physique)+fieldRow('parcours','Parcours',f.parcours)+fieldRow('type_client','Type client',f.type_client);
+  document.getElementById('fields-dates').innerHTML = fieldRow('statut','Statut',f.statut,true)+fieldRow('date_passation','Date passation',f.date_passation)+fieldRow('date_livraison_prevue','Livraison prévue',f.date_livraison_prevue)+`<div class="field-grid"><span class="flabel">Livraison effective</span><span class="fval" style="color:var(--text3);">— (à la livraison)</span><div class="conf"><div class="dot dn"></div><span>n/a</span></div><span class="src-tag">⚙️ règle</span></div>`;
+  document.getElementById('fields-ecosysteme').innerHTML = fieldRow('pos','POS',f.pos)+fieldRow('psp','PSP',f.psp)+fieldRow('fidelite','Fidélité',f.fidelite)+`<div class="field-grid"><span class="flabel">ChargeBee ID</span><span class="fval" style="color:var(--text3);">— (pas encore créé)</span><div class="conf"><div class="dot dg"></div><span>100%</span></div><span class="src-tag">⚙️ règle</span></div>`+fieldRow('fees_ht_cb','Fees HT CB',f.fees_ht_cb)+fieldRow('fees_ht_trd','Fees HT TRD',f.fees_ht_trd);
+  document.getElementById('fields-facturation').innerHTML = fieldRow('abo_cc','Abo C&C',f.abo_cc)+fieldRow('abo_livraison','Abo Livraison',f.abo_livraison)+fieldRow('abo_table','Abo à table',f.abo_table)+fieldRow('abo_bornes','Abo Bornes',f.abo_bornes)+fieldRow('abo_global','Abo global',f.abo_global)+fieldRow('total_mrr_unitaire','MRR unitaire',f.total_mrr_unitaire)+fieldRow('mrr_total','MRR total',f.mrr_total)+fieldRow('setup_montant','Setup',f.setup_montant)+fieldRow('hardware_montant','Hardware',f.hardware_montant);
+  renderPositionPreview(r._insertPos, f.date_livraison_prevue?.value||'?');
+  setTimeout(() => {
+    const inp = document.getElementById('field-date_livraison_prevue');
+    if (inp) inp.addEventListener('change', async () => {
+      const sheetRows = await getSheetDates();
+      const pos = findInsertPosition(sheetRows, inp.value);
+      insertRowIndex = pos.rowIndex;
+      analysisResult._insertPos = pos;
+      renderPositionPreview(pos, inp.value);
+    });
+  }, 100);
+}
+
+function showTab(name) {
+  ['identification','dates','ecosysteme','facturation'].forEach(t => { document.getElementById('tab-'+t).style.display = t===name?'block':'none'; });
+  document.querySelectorAll('.tab').forEach(btn => { btn.classList.toggle('active', btn.textContent.toLowerCase().includes(name)||(name==='identification'&&btn.textContent.toLowerCase().includes('ident'))); });
+}
+
+function getVal(key) { const el = document.getElementById('field-'+key); return el?el.value:(analysisResult?.fields[key]?.value||''); }
+
+async function writeToSheets() {
+  setStep(5);
+  document.getElementById('panel-step4').style.display = 'none';
+  document.getElementById('panel-step5').style.display = 'block';
+  document.getElementById('write-content').innerHTML = '<div class="loading"><span class="spinner"></span>Insertion à la bonne position...</div>';
+  try {
+    const targetRow = insertRowIndex || DATA_START_ROW + 1;
+    await sheetsFetch('/batchUpdate', 'POST', { requests: [{ insertDimension: { range: { sheetId: 0, dimension: 'ROWS', startIndex: targetRow-1, endIndex: targetRow }, inheritFromBefore: false } }] });
+    const rowData = ['',getVal('cdp'),getVal('sale'),getVal('type_contrat'),getVal('nom_contrat'),getVal('nbr_shop'),getVal('new_shop_physique'),'','0. A venir',getVal('date_passation'),getVal('date_livraison_prevue'),'','',getVal('parcours'),getVal('pos'),getVal('psp'),getVal('fidelite'),'','','','',getVal('fees_ht_cb'),getVal('fees_ht_trd'),getVal('abo_global'),'',getVal('abo_cc'),getVal('abo_livraison'),getVal('abo_table'),getVal('abo_bornes'),getVal('total_mrr_unitaire'),getVal('mrr_total'),'','','',getVal('setup_montant'),'',getVal('hardware_montant'),'','','','','','','','','','','','','','','','','','','','','','','','',getVal('type_client'),'','',''];
+    const writeResp = await sheetsFetch(`/values/A${targetRow}:BH${targetRow}?valueInputOption=USER_ENTERED`, 'PUT', { range:`A${targetRow}:BH${targetRow}`, majorDimension:'ROWS', values:[rowData] });
+    if (writeResp.updatedRows >= 1) {
+      const pos = analysisResult._insertPos;
+      document.getElementById('write-content').innerHTML = `
+        <div class="alert alert-success"><i class="ti ti-circle-check"></i>
+          <div><strong>Ligne insérée à la bonne position !</strong><br>
+          Contrat : <strong>${getVal('nom_contrat')}</strong><br>
+          Ligne ${targetRow} · Livraison prévue : ${getVal('date_livraison_prevue')}
+          ${pos?.before?`<br><span style="font-size:11px;opacity:0.8;">↑ ${pos.before.contrat} (${pos.before.date})</span>`:''}
+          ${pos?.after?`<br><span style="font-size:11px;opacity:0.8;">↓ ${pos.after.contrat} (${pos.after.date})</span>`:''}
+          </div></div>
+        <div class="actions">
+          <a href="https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit" target="_blank" class="btn btn-info"><i class="ti ti-external-link"></i>Ouvrir le sheet</a>
+          <button class="btn btn-secondary" onclick="restart()"><i class="ti ti-plus" style="margin-right:5px;"></i>Nouveau mail</button>
+        </div>`;
+    } else throw new Error('Écriture non confirmée : ' + JSON.stringify(writeResp));
+  } catch(e) {
+    document.getElementById('write-content').innerHTML = `<div class="alert alert-warn"><i class="ti ti-alert-triangle"></i>Erreur : ${e.message}</div><div class="actions" style="margin-top:8px;"><button class="btn btn-secondary" onclick="backToValidation()">Retour</button></div>`;
+  }
+}
+
+function setStep(n) { document.querySelectorAll('.step').forEach((el,i)=>{ el.classList.remove('active','done'); if(i+1<n) el.classList.add('done'); if(i+1===n) el.classList.add('active'); }); }
+function backToMails() { document.getElementById('panel-step4').style.display='none'; document.getElementById('panel-step2').style.display='block'; setStep(2); }
+function backToValidation() { document.getElementById('panel-step5').style.display='none'; document.getElementById('panel-step4').style.display='block'; setStep(4); }
+function restart() { selectedMail=null; analysisResult=null; insertRowIndex=null; document.getElementById('btn-analyze').style.display='none'; document.querySelectorAll('.mail-item').forEach(el=>el.classList.remove('selected')); document.getElementById('panel-step5').style.display='none'; document.getElementById('panel-step2').style.display='block'; setStep(2); loadMails(); }
+
+// Auto-reconnect if refresh token exists
+if (localStorage.getItem('csm_refresh')) {
+  tryRefreshToken().then(ok => { if (ok) setConnected(); });
+}
+</script>
+</body>
+</html>
