@@ -128,10 +128,13 @@
       </button>
       <div id="oauth-error" style="display:none;margin-top:12px;"></div>
       <div id="token-input-zone" style="display:none;margin-top:1.25rem;">
-        <p style="font-size:12px;color:var(--text2);margin-bottom:8px;">
-          Après l'autorisation Google, tu es redirigé vers une page.<br>
-          Copie la valeur du paramètre <code>code=...</code> dans l'URL et colle-la ici :
-        </p>
+        <div style="background:var(--bg2);border-radius:var(--radius);padding:10px 14px;font-size:12px;color:var(--text2);margin-bottom:10px;">
+          <strong style="color:var(--text);">Comment récupérer le code :</strong><br><br>
+          1. Une fenêtre Google s'ouvre → connecte-toi<br>
+          2. Tu arrives sur une page d'erreur ou vide — c'est normal<br>
+          3. Dans l'URL de cette page, copie la valeur après <code>code=</code> jusqu'au <code>&</code><br>
+          4. Colle-la ci-dessous et clique Valider
+        </div>
         <input type="text" id="oauth-code" placeholder="4/0AX4XfWh..." style="width:100%;font-size:12px;padding:7px 10px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--bg2);color:var(--text);margin-bottom:10px;outline:none;" />
         <button class="btn btn-info" onclick="exchangeCode()">Valider le code</button>
       </div>
@@ -196,7 +199,7 @@
 const CLIENT_ID = '1001026932986-56vh7ahmeo4p66f66f1fhacbk000gro9.apps.googleusercontent.com';
 const CLIENT_SECRET = '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';
 const SHEET_ID = '1ZlqG1jRTx-2yHFwHAEOgTej13TS720ARb4bw6aXemTA';
-const REDIRECT_URI = window.location.href.split('?')[0];
+const REDIRECT_URI = 'https://claude.ai/public/artifacts/5b1ab478-7d1f-4734-84bf-e362c3b2a4b6';
 const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/gmail.readonly';
 const DATA_START_ROW = 3;
 
@@ -221,7 +224,31 @@ function parseDate(str) {
 
 function startOAuth() {
   const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=${encodeURIComponent(SCOPES)}&access_type=offline&prompt=consent`;
-  window.location.href = url;
+  // Open in popup to avoid iframe/redirect restrictions
+  const popup = window.open(url, 'google-auth', 'width=500,height=600,scrollbars=yes');
+  if (!popup) {
+    // Fallback: show manual link
+    document.getElementById('oauth-error').innerHTML = `<div class="alert alert-info"><i class="ti ti-external-link"></i> <a href="${url}" target="_blank" style="color:inherit;">Clique ici pour t'authentifier</a>, puis colle le code ci-dessous.</div>`;
+    document.getElementById('oauth-error').style.display = 'block';
+  }
+  document.getElementById('token-input-zone').style.display = 'block';
+  document.getElementById('oauth-error').style.display = 'none';
+  // Poll for code in popup URL
+  const interval = setInterval(() => {
+    try {
+      if (popup && popup.closed) { clearInterval(interval); return; }
+      if (popup && popup.location && popup.location.href && popup.location.href.includes('code=')) {
+        const params = new URLSearchParams(popup.location.search);
+        const code = params.get('code');
+        if (code) {
+          document.getElementById('oauth-code').value = code;
+          popup.close();
+          clearInterval(interval);
+          exchangeCode();
+        }
+      }
+    } catch(e) { /* cross-origin, normal */ }
+  }, 500);
 }
 
 async function exchangeCode() {
@@ -358,23 +385,76 @@ async function startAnalysis() {
   const iv = setInterval(() => { si=(si+1)%statuses.length; const el=document.getElementById('analysis-status'); if(el) el.textContent=statuses[si]; }, 2000);
   try {
     const [body, sheetCtx] = await Promise.all([getMailBody(selectedMail.id), getSheetContext()]);
-    const prompt = `Tu analyses des mails "Nouveau contrat" pour le fichier Projets Team CSM (déploiement de parcours digitaux chez des restaurateurs).
+    const prompt = `Tu analyses des mails "Nouveau contrat" pour remplir le fichier Google Sheets "Projets – Team CSM" de Dood (déploiement de parcours digitaux chez des restaurateurs).
 
-CONTEXTE SHEET (lignes existantes):
+CONTEXTE SHEET (lignes existantes pour déduction):
 ${sheetCtx}
 
-RÈGLES MÉTIER:
-- Si le nom du client existe déjà dans le sheet → TYPE = Roll-out, récupère POS/PSP/Fid des lignes existantes
-- "Upsell Booster" dans le mail → TYPE = Upsell
-- Premier déploiement complet → TYPE = Lancement, partiel → Pilote
-- STATUT toujours "0. A venir"
-- ChargeBee ID toujours vide
-- DATE LIVRAISON EFFECTIVE toujours vide
-- Aucune date de livraison → passation + 15 jours
-- PSP = Yavin → Fees obligatoires
-- 10+ shops déployés pour l'enseigne = Grand compte, sinon SMB
-- MRR total = MRR unitaire × nbr shops
-- Sales = personne dans la signature du mail
+=== RÈGLES PAR CHAMP ===
+
+CDP: Mentionnée dans le mail si grand compte. Si non mentionnée → "À définir". Si l'enseigne est connue dans le sheet, déduis la CDP habituellement associée.
+
+SALE: Personne qui envoie le mail (signature). Prénom uniquement. Ex: "Antoine Rabin" → "Antoine".
+
+TYPE (liste fermée, une seule valeur):
+- Roll-out: enseigne déjà présente dans le sheet, nouveau shop/franchisé. Si mail dit "Roll out [enseigne]" → Roll-out.
+- Pilote: nouvelle enseigne, déploiement partiel
+- Lancement: nouvelle enseigne, intégralité du parc
+- SMB One-Shot: client indépendant, 1 à 3 shops
+- Partenariat: workflow spécifique hors mail/PDF
+- Foodcourt: client foodcourt
+- Nouveau parcours: client existant, ajout d'un nouveau canal
+- Bornes: client existant, ajout de bornes
+- Imprimante: client existant, ajout d'imprimante
+- Upsell: client existant en run, ajout de features ("Upsell Booster" dans le mail)
+
+CONTRAT: Nom COMMERCIAL du shop (pas le nom juridique). Format: "[Enseigne] [Ville]". Ex: "Compose Puteaux".
+
+NBR SHOP: Nombre de shops concernés.
+
+NEW SHOP PHY: 1 si ouverture nouveau point de vente physique, 0 sinon. Upsell/nouveau parcours = 0.
+
+STATUT: Toujours "À venir" à la création.
+
+DATE PASSATION: Date réception du mail. Format DD/MM/YYYY.
+
+DATE LIVRAISON PRÉVUE: Si date d'ouverture mentionnée → utilise-la. Sinon → date passation + 15 jours.
+
+PARCOURS: Canaux commandés (combiner): C&C=Click&Collect | Uber=Uber Direct | Cantine=Cantine Digitale | Liv propre=Livraison propre | On site=pay at table | Borne=borne de commande. Extraire de la section "Abonnement" du mail.
+
+POS: Système de caisse (Zelty, L'addition, Cashpad, Deliverect, Viva, None...). Si enseigne dans le sheet → déduire des lignes existantes.
+
+PSP: Prestataire paiement (Stripe, Yavin, Lyf...). Si enseigne dans le sheet → déduire.
+
+FIDELITE: Programme fidélité (Pongo, Zerosix, Como...). Si non mentionné → laisser vide.
+
+CHARGEBEE ID: TOUJOURS vide. Ne jamais remplir.
+
+FACTURATION ABO: Par défaut "En attente de création de compagnie".
+
+FACTURATION FEES: Si PSP=Yavin → "En attente de création de compagnie". Sinon vide.
+
+ABO GLOBAL: Montant total abo si pas de granularité par parcours.
+ABO C&C: Montant abo Click & Collect si granularité disponible.
+ABO LIVRAISON: Montant abo Uber/livraison si granularité.
+ABO TABLE: Montant abo Cantine Digitale/pay at table si granularité.
+ABO BORNES: Montant abo bornes si granularité.
+
+TOTAL MRR UNITAIRE: Somme des abonnements actifs pour 1 shop.
+MRR TOTAL: Total MRR unitaire × nombre de shops.
+
+FEES HT CB: Commission CB. OBLIGATOIRE si PSP=Yavin. Format: "Interchange+ 0,55". Ne pas remplir taux Amex.
+FEES HT TRD: Commission TRD. OBLIGATOIRE si PSP=Yavin.
+
+SETUP MONTANT: Montant HT setup indiqué dans le mail.
+SETUP TOTAL: Setup unitaire × nombre de shops.
+FACTURATION SETUP: Prochaine échéance hebdo comptabilité après la date de passation (prochain vendredi).
+
+TYPE CLIENT: "Grand compte (10+)" si enseigne avec beaucoup de shops, "SMB (1 à 9)" si petite structure, "Partner" si partenariat.
+
+COMMENTAIRES: Infos importantes (contraintes, contexte, contacts spécifiques).
+
+NE PAS REMPLIR: ChargeBee ID, date livraison effective, taux Amex, colonnes comptabilité hebdo.
 
 MAIL:
 Sujet: ${selectedMail.subject}
@@ -383,7 +463,7 @@ Date: ${selectedMail.date}
 Corps: ${body}
 
 Réponds UNIQUEMENT en JSON sans markdown:
-{"fields":{"cdp":{"value":"","confidence":0,"source":"mail","reason":""},"sale":{"value":"","confidence":0,"source":"mail","reason":""},"type_contrat":{"value":"","confidence":0,"source":"mail","reason":""},"nom_contrat":{"value":"","confidence":0,"source":"mail","reason":""},"nbr_shop":{"value":"","confidence":0,"source":"mail","reason":""},"new_shop_physique":{"value":"","confidence":0,"source":"mail","reason":""},"statut":{"value":"0. A venir","confidence":100,"source":"regle_metier","reason":""},"date_passation":{"value":"","confidence":0,"source":"mail","reason":""},"date_livraison_prevue":{"value":"","confidence":0,"source":"mail","reason":""},"parcours":{"value":"","confidence":0,"source":"mail","reason":""},"pos":{"value":"","confidence":0,"source":"mail","reason":""},"psp":{"value":"","confidence":0,"source":"mail","reason":""},"fidelite":{"value":"","confidence":0,"source":"mail","reason":""},"fees_ht_cb":{"value":"","confidence":0,"source":"mail","reason":""},"fees_ht_trd":{"value":"","confidence":0,"source":"mail","reason":""},"abo_cc":{"value":"","confidence":0,"source":"mail","reason":""},"abo_livraison":{"value":"","confidence":0,"source":"mail","reason":""},"abo_table":{"value":"","confidence":0,"source":"mail","reason":""},"abo_bornes":{"value":"","confidence":0,"source":"mail","reason":""},"abo_global":{"value":"","confidence":0,"source":"mail","reason":""},"total_mrr_unitaire":{"value":"","confidence":0,"source":"mail","reason":""},"mrr_total":{"value":"","confidence":0,"source":"mail","reason":""},"setup_montant":{"value":"","confidence":0,"source":"mail","reason":""},"hardware_montant":{"value":"0","confidence":90,"source":"mail","reason":""},"type_client":{"value":"","confidence":0,"source":"mail","reason":""}},"alerts":[],"position_note":""}`;
+{"fields":{"cdp":{"value":"","confidence":0,"source":"mail","reason":""},"sale":{"value":"","confidence":0,"source":"mail","reason":""},"type_contrat":{"value":"","confidence":0,"source":"mail","reason":""},"nom_contrat":{"value":"","confidence":0,"source":"mail","reason":""},"nbr_shop":{"value":"","confidence":0,"source":"mail","reason":""},"new_shop_physique":{"value":"","confidence":0,"source":"mail","reason":""},"statut":{"value":"À venir","confidence":100,"source":"regle_metier","reason":""},"date_passation":{"value":"","confidence":0,"source":"mail","reason":""},"date_livraison_prevue":{"value":"","confidence":0,"source":"mail","reason":""},"parcours":{"value":"","confidence":0,"source":"mail","reason":""},"pos":{"value":"","confidence":0,"source":"mail","reason":""},"psp":{"value":"","confidence":0,"source":"mail","reason":""},"fidelite":{"value":"","confidence":0,"source":"mail","reason":""},"facturation_abo":{"value":"En attente de création de compagnie","confidence":100,"source":"regle_metier","reason":""},"facturation_fees":{"value":"","confidence":0,"source":"mail","reason":""},"fees_ht_cb":{"value":"","confidence":0,"source":"mail","reason":""},"fees_ht_trd":{"value":"","confidence":0,"source":"mail","reason":""},"abo_cc":{"value":"","confidence":0,"source":"mail","reason":""},"abo_livraison":{"value":"","confidence":0,"source":"mail","reason":""},"abo_table":{"value":"","confidence":0,"source":"mail","reason":""},"abo_bornes":{"value":"","confidence":0,"source":"mail","reason":""},"abo_global":{"value":"","confidence":0,"source":"mail","reason":""},"total_mrr_unitaire":{"value":"","confidence":0,"source":"mail","reason":""},"mrr_total":{"value":"","confidence":0,"source":"mail","reason":""},"setup_montant":{"value":"","confidence":0,"source":"mail","reason":""},"setup_total":{"value":"","confidence":0,"source":"mail","reason":""},"facturation_setup":{"value":"","confidence":0,"source":"mail","reason":""},"type_client":{"value":"","confidence":0,"source":"mail","reason":""},"commentaires":{"value":"","confidence":0,"source":"mail","reason":""}},"alerts":[],"position_note":""}`;
 
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -447,10 +527,41 @@ function renderValidation(r) {
   az.innerHTML = '';
   (r.alerts||[]).forEach(a => { az.innerHTML += `<div class="alert alert-warn"><i class="ti ti-alert-triangle"></i>${a}</div>`; });
   if (!missing) az.innerHTML += `<div class="alert alert-success"><i class="ti ti-circle-check"></i>Tous les champs ont pu être renseignés.</div>`;
-  document.getElementById('fields-identification').innerHTML = fieldRow('cdp','Chef de projet',f.cdp)+fieldRow('sale','Sales',f.sale)+fieldRow('type_contrat','Type contrat',f.type_contrat)+fieldRow('nom_contrat','Nom contrat',f.nom_contrat)+fieldRow('nbr_shop','Nombre de shops',f.nbr_shop)+fieldRow('new_shop_physique','New shop physique',f.new_shop_physique)+fieldRow('parcours','Parcours',f.parcours)+fieldRow('type_client','Type client',f.type_client);
-  document.getElementById('fields-dates').innerHTML = fieldRow('statut','Statut',f.statut,true)+fieldRow('date_passation','Date passation',f.date_passation)+fieldRow('date_livraison_prevue','Livraison prévue',f.date_livraison_prevue)+`<div class="field-grid"><span class="flabel">Livraison effective</span><span class="fval" style="color:var(--text3);">— (à la livraison)</span><div class="conf"><div class="dot dn"></div><span>n/a</span></div><span class="src-tag">⚙️ règle</span></div>`;
-  document.getElementById('fields-ecosysteme').innerHTML = fieldRow('pos','POS',f.pos)+fieldRow('psp','PSP',f.psp)+fieldRow('fidelite','Fidélité',f.fidelite)+`<div class="field-grid"><span class="flabel">ChargeBee ID</span><span class="fval" style="color:var(--text3);">— (pas encore créé)</span><div class="conf"><div class="dot dg"></div><span>100%</span></div><span class="src-tag">⚙️ règle</span></div>`+fieldRow('fees_ht_cb','Fees HT CB',f.fees_ht_cb)+fieldRow('fees_ht_trd','Fees HT TRD',f.fees_ht_trd);
-  document.getElementById('fields-facturation').innerHTML = fieldRow('abo_cc','Abo C&C',f.abo_cc)+fieldRow('abo_livraison','Abo Livraison',f.abo_livraison)+fieldRow('abo_table','Abo à table',f.abo_table)+fieldRow('abo_bornes','Abo Bornes',f.abo_bornes)+fieldRow('abo_global','Abo global',f.abo_global)+fieldRow('total_mrr_unitaire','MRR unitaire',f.total_mrr_unitaire)+fieldRow('mrr_total','MRR total',f.mrr_total)+fieldRow('setup_montant','Setup',f.setup_montant)+fieldRow('hardware_montant','Hardware',f.hardware_montant);
+  document.getElementById('fields-identification').innerHTML =
+    fieldRow('cdp','Chef de projet',f.cdp)+
+    fieldRow('sale','Sales',f.sale)+
+    fieldRow('type_contrat','Type contrat',f.type_contrat)+
+    fieldRow('nom_contrat','Nom contrat',f.nom_contrat)+
+    fieldRow('nbr_shop','Nombre de shops',f.nbr_shop)+
+    fieldRow('new_shop_physique','New shop physique',f.new_shop_physique)+
+    fieldRow('parcours','Parcours',f.parcours)+
+    fieldRow('type_client','Type client',f.type_client)+
+    fieldRow('commentaires','Commentaires',f.commentaires);
+  document.getElementById('fields-dates').innerHTML =
+    fieldRow('statut','Statut',f.statut,true)+
+    fieldRow('date_passation','Date passation',f.date_passation)+
+    fieldRow('date_livraison_prevue','Livraison prévue',f.date_livraison_prevue)+
+    `<div class="field-grid"><span class="flabel">Livraison effective</span><span class="fval" style="color:var(--text3);">— (à la livraison)</span><div class="conf"><div class="dot dn"></div><span>n/a</span></div><span class="src-tag">⚙️ règle</span></div>`;
+  document.getElementById('fields-ecosysteme').innerHTML =
+    fieldRow('pos','POS',f.pos)+
+    fieldRow('psp','PSP',f.psp)+
+    fieldRow('fidelite','Fidélité',f.fidelite)+
+    `<div class="field-grid"><span class="flabel">ChargeBee ID</span><span class="fval" style="color:var(--text3);">— (jamais rempli à création)</span><div class="conf"><div class="dot dg"></div><span>100%</span></div><span class="src-tag">⚙️ règle</span></div>`+
+    fieldRow('fees_ht_cb','Fees HT CB',f.fees_ht_cb)+
+    fieldRow('fees_ht_trd','Fees HT TRD',f.fees_ht_trd)+
+    fieldRow('facturation_fees','Fact. Fees',f.facturation_fees);
+  document.getElementById('fields-facturation').innerHTML =
+    fieldRow('abo_global','Abo global',f.abo_global)+
+    fieldRow('abo_cc','Abo C&C',f.abo_cc)+
+    fieldRow('abo_livraison','Abo Livraison',f.abo_livraison)+
+    fieldRow('abo_table','Abo à table',f.abo_table)+
+    fieldRow('abo_bornes','Abo Bornes',f.abo_bornes)+
+    fieldRow('total_mrr_unitaire','MRR unitaire',f.total_mrr_unitaire)+
+    fieldRow('mrr_total','MRR total',f.mrr_total)+
+    fieldRow('facturation_abo','Fact. Abo',f.facturation_abo,true)+
+    fieldRow('setup_montant','Setup unitaire',f.setup_montant)+
+    fieldRow('setup_total','Setup total',f.setup_total)+
+    fieldRow('facturation_setup','Fact. Setup',f.facturation_setup);
   renderPositionPreview(r._insertPos, f.date_livraison_prevue?.value||'?');
   setTimeout(() => {
     const inp = document.getElementById('field-date_livraison_prevue');
